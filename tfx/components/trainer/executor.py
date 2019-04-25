@@ -40,8 +40,7 @@ def _all_files_pattern(file_pattern):
 
 
 class Executor(base_executor.BaseExecutor):
-  """Executor for the official TFX Trainer component.
-  """
+  """Generic TFX trainer executor."""
 
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
@@ -72,17 +71,12 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    # TODO(zhitaoli): Deprecate this in a future version.
+    # TODO(khaas): Move this to tfx/extensions.
     if exec_properties.get('custom_config', None):
       cmle_args = exec_properties.get('custom_config',
                                       {}).get('cmle_training_args')
       if cmle_args:
         executor_class_path = '.'.join([Executor.__module__, Executor.__name__])
-        tf.logging.warn(
-            'Passing \'cmle_training_args\' to trainer directly is deprecated, '
-            'please use extension executor at '
-            'tfx.extensions.google_cloud_ai_platform.trainer.executor instead')
-
         return cmle_runner.start_cmle_training(input_dict, output_dict,
                                                exec_properties,
                                                executor_class_path, cmle_args)

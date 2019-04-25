@@ -17,16 +17,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Any, Dict, Optional, Text
 
 from tfx.components.base import base_component
-from tfx.components.example_gen import component
+from tfx.components.base import base_driver
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.utils import channel
+from tfx.utils import types
+from google.protobuf import json_format
 
 
-class BigQueryExampleGen(component.ExampleGen):
+class BigQueryExampleGen(base_component.BaseComponent):
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train
@@ -47,8 +50,6 @@ class BigQueryExampleGen(component.ExampleGen):
   Attributes:
     outputs: A ComponentOutputs including following keys:
       - examples: A channel of 'ExamplesPath' with train and eval examples.
-  Raises:
-    RuntimeError: Only one of query and input_config should be set.
   """
 
   def __init__(self,
@@ -57,16 +58,46 @@ class BigQueryExampleGen(component.ExampleGen):
                output_config = None,
                name = None,
                outputs = None):
-    if bool(query) == bool(input_config):
-      raise RuntimeError('Only one of query and input_config should be set.')
-    input_config = input_config or utils.make_default_input_config(query)
-    output_config = output_config or utils.make_default_output_config(
-        input_config)
+    component_name = 'BigQueryExampleGen'
+    input_dict = {}
+    # Default value need to be set in component instead of executor as output
+    # artifacts depend on it.
+    assert bool(query) ^ bool(
+        input_config), 'One of query and input_config must be set.'
+    self._input_config = input_config or utils.make_default_input_config(query)
+    self._output_config = output_config or utils.make_default_output_config(
+        self._input_config)
+    exec_properties = {
+        'input': json_format.MessageToJson(self._input_config),
+        'output': json_format.MessageToJson(self._output_config)
+    }
     super(BigQueryExampleGen, self).__init__(
-        executor=executor.Executor,
-        input_base=None,
-        input_config=input_config,
-        output_config=output_config,
-        component_name='BigQueryExampleGen',
+        component_name=component_name,
         unique_name=name,
-        outputs=outputs)
+        driver=base_driver.BaseDriver,
+        executor=executor.Executor,
+        input_dict=input_dict,
+        outputs=outputs,
+        exec_properties=exec_properties)
+
+  def _create_outputs(self):
+    """Creates outputs for BigQueryExampleGen.
+
+    Returns:
+      ComponentOutputs object containing the dict of [Text -> Channel]
+    """
+    output_artifact_collection = [
+        types.TfxType('ExamplesPath', split=split_name)
+        for split_name in utils.generate_output_split_names(
+            self._input_config, self._output_config)
+    ]
+    return base_component.ComponentOutputs({
+        'examples':
+            channel.Channel(
+                type_name='ExamplesPath',
+                static_artifact_collection=output_artifact_collection)
+    })
+
+  def _type_check(self, input_dict,
+                  exec_properties):
+    pass

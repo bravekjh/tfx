@@ -21,7 +21,6 @@ import os
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-import tensorflow_transform as tft
 from tfx.examples.chicago_taxi.trainer import model
 from tfx.examples.chicago_taxi.trainer import taxi
 
@@ -47,17 +46,16 @@ def train_and_maybe_evaluate(hparams):
     The estimator that was used for training (and maybe eval)
   """
   schema = taxi.read_schema(hparams.schema_file)
-  tf_transform_output = tft.TFTransformOutput(hparams.tf_transform_dir)
 
   train_input = lambda: model.input_fn(
       hparams.train_files,
-      tf_transform_output,
+      hparams.tf_transform_dir,
       batch_size=TRAIN_BATCH_SIZE
   )
 
   eval_input = lambda: model.input_fn(
       hparams.eval_files,
-      tf_transform_output,
+      hparams.tf_transform_dir,
       batch_size=EVAL_BATCH_SIZE
   )
 
@@ -65,7 +63,7 @@ def train_and_maybe_evaluate(hparams):
       train_input, max_steps=hparams.train_steps)
 
   serving_receiver_fn = lambda: model.example_serving_receiver_fn(
-      tf_transform_output, schema)
+      hparams.tf_transform_dir, schema)
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
@@ -81,7 +79,7 @@ def train_and_maybe_evaluate(hparams):
   run_config = run_config.replace(model_dir=serving_model_dir)
 
   estimator = model.build_estimator(
-      tf_transform_output,
+      hparams.tf_transform_dir,
 
       # Construct layers sizes with exponetial decay
       hidden_units=[
@@ -104,13 +102,12 @@ def run_experiment(hparams):
   estimator = train_and_maybe_evaluate(hparams)
 
   schema = taxi.read_schema(hparams.schema_file)
-  tf_transform_output = tft.TFTransformOutput(hparams.tf_transform_dir)
 
   # Save a model for tfma eval
   eval_model_dir = os.path.join(hparams.output_dir, EVAL_MODEL_DIR)
 
   receiver_fn = lambda: model.eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-      tf_transform_output, schema)
+      hparams.tf_transform_dir, schema)
 
   tfma.export.export_eval_savedmodel(
       estimator=estimator,

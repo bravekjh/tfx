@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import apache_beam as beam
 import tensorflow as tf
 
 from tfx.components.trainer import executor
@@ -74,8 +75,10 @@ class ExecutorTest(tf.test.TestCase):
             False,
     }
 
-    trainer_executor = executor.Executor()
-    trainer_executor.Do(
+    # Run executor.
+    pipeline = beam.Pipeline()
+    evaluator = executor.Executor(pipeline)
+    evaluator.Do(
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties)

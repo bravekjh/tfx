@@ -16,11 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
-from tfx.components.base import base_executor
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.utils import channel
@@ -48,7 +47,6 @@ class Pusher(base_component.BaseComponent):
       passed to Google Cloud ML Engine.  For the full set of parameters
       supported by Google Cloud ML Engine, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-    executor_class: Optional custom python executor class.
     outputs: Optional dict from name to output channel.
   Attributes:
     outputs: A ComponentOutputs including following keys:
@@ -61,7 +59,6 @@ class Pusher(base_component.BaseComponent):
                push_destination,
                name = None,
                custom_config = None,
-               executor_class = executor.Executor,
                outputs = None):
     component_name = 'Pusher'
     input_dict = {
@@ -76,7 +73,7 @@ class Pusher(base_component.BaseComponent):
         component_name=component_name,
         unique_name=name,
         driver=base_driver.BaseDriver,
-        executor=executor_class,
+        executor=executor.Executor,
         input_dict=input_dict,
         outputs=outputs,
         exec_properties=exec_properties)
