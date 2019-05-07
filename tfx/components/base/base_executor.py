@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import abc
 import json
+import os
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
@@ -28,6 +29,18 @@ from tfx.utils import types
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   """Abstract TFX executor class."""
+
+  class Context(object):
+    """A context class for all excecutors."""
+
+    def __init__(self, beam_pipeline_args = None,
+                 tmp_dir = None,
+                 unique_id = None):
+      self.beam_pipeline_args = beam_pipeline_args
+      # Base temp directory for the pipeline
+      self.tmp_dir = tmp_dir
+      # A unique id to distinguish every execution run
+      self.unique_id = unique_id
 
   @abc.abstractmethod
   def Do(self, input_dict,
@@ -52,13 +65,11 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     """
     pass
 
-  def __init__(self, beam_pipeline_args = None):
-    """Constructs a beam based executor.
+  def __init__(self, context = None):
+    """Constructs a beam based executor."""
+    self._context = context
+    self._beam_pipeline_args = context.beam_pipeline_args if context else None
 
-    Args:
-      beam_pipeline_args: Beam pipeline args.
-    """
-    self._beam_pipeline_args = beam_pipeline_args
     if self._beam_pipeline_args:
       self._beam_pipeline_args = deps_utils.make_beam_dependency_flags(
           self._beam_pipeline_args)
@@ -68,6 +79,21 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   def _get_beam_pipeline_args(self):
     """Get beam pipeline args."""
     return self._beam_pipeline_args
+
+  def _get_tmp_dir(self):
+    """Get the temporary directory path."""
+    if not self._context:
+      raise RuntimeError('No context for the executor')
+    if not self._context.tmp_dir:
+      raise RuntimeError('No temp dir for executor')
+    tmp_path = os.path.join(self._context.tmp_dir,
+                            str(self._context.unique_id), '')
+    if tf.gfile.Exists(tmp_path):
+      tf.logging.info('Temp directory already exists at %s', tmp_path)
+    else:
+      tf.logging.info('Creating temp directory at %s', tmp_path)
+      tf.gfile.MakeDirs(tmp_path)
+    return tmp_path
 
   def _log_startup(self, inputs,
                    outputs,
