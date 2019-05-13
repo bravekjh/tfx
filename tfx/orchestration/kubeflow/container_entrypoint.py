@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Main entrypoint for containers with Kubeflow TFX component executors.
+"""Main entrypoint for containers with Kubeflow TFX runners.
 
 We cannot use the existing TFX container entrypoint for the following
 reason:Say component A requires inputs from component B output O1 and
@@ -32,7 +32,7 @@ from __future__ import print_function
 import argparse
 import logging
 import sys
-from tfx.orchestration.kubeflow import executor_wrappers as wrappers
+from tfx.orchestration.kubeflow import container_runners as runners
 
 
 def main():
@@ -45,57 +45,57 @@ def main():
   parser.add_argument('--outputs', type=str, required=True)
   parser.add_argument('--executor_class_path', type=str, required=True)
 
-  subparsers = parser.add_subparsers(dest='executor')
+  subparsers = parser.add_subparsers(dest='runner')
 
   subparser = subparsers.add_parser('CsvExampleGen')
   subparser.add_argument('--input-base', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.CsvExampleGenWrapper)
+  subparser.set_defaults(runner=runners.CsvExampleGenRunner)
 
   subparser = subparsers.add_parser('BigQueryExampleGen')
-  subparser.set_defaults(executor=wrappers.BigQueryExampleGenWrapper)
+  subparser.set_defaults(runner=runners.BigQueryExampleGenRunner)
 
   subparser = subparsers.add_parser('StatisticsGen')
   subparser.add_argument('--input_data', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.StatisticsGenWrapper)
+  subparser.set_defaults(runner=runners.StatisticsGenRunner)
 
   subparser = subparsers.add_parser('SchemaGen')
   subparser.add_argument('--stats', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.SchemaGenWrapper)
+  subparser.set_defaults(runner=runners.SchemaGenRunner)
 
   subparser = subparsers.add_parser('ExampleValidator')
   subparser.add_argument('--stats', type=str, required=True)
   subparser.add_argument('--schema', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.ExampleValidatorWrapper)
+  subparser.set_defaults(runner=runners.ExampleValidatorRunner)
 
   subparser = subparsers.add_parser('Transform')
   subparser.add_argument('--input_data', type=str, required=True)
   subparser.add_argument('--schema', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.TransformWrapper)
+  subparser.set_defaults(runner=runners.TransformRunner)
 
   subparser = subparsers.add_parser('Trainer')
   subparser.add_argument('--transformed_examples', type=str, required=True)
   subparser.add_argument('--transform_output', type=str, required=True)
   subparser.add_argument('--schema', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.TrainerWrapper)
+  subparser.set_defaults(runner=runners.TrainerRunner)
 
   subparser = subparsers.add_parser('Evaluator')
   subparser.add_argument('--examples', type=str, required=True)
   subparser.add_argument('--model_exports', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.EvaluatorWrapper)
+  subparser.set_defaults(runner=runners.EvaluatorRunner)
 
   subparser = subparsers.add_parser('ModelValidator')
   subparser.add_argument('--examples', type=str, required=True)
   subparser.add_argument('--model', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.ModelValidatorWrapper)
+  subparser.set_defaults(runner=runners.ModelValidatorRunner)
 
   subparser = subparsers.add_parser('Pusher')
   subparser.add_argument('--model_export', type=str, required=True)
   subparser.add_argument('--model_blessing', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.PusherWrapper)
+  subparser.set_defaults(runner=runners.PusherRunner)
 
   args = parser.parse_args()
-  executor = args.executor(args)
-  executor.run()
+  runner = args.runner(args)
+  runner.run()
 
 
 if __name__ == '__main__':
